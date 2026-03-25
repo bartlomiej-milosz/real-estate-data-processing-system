@@ -1,0 +1,23 @@
+[project]
+name = "warsaw-properties"
+version = "0.1.0"
+description = "Automated pipeline for scraping and normalizing real estate listings from the Warsaw market"
+requires-python = ">=3.13"
+dependencies = [
+    "beautifulsoup4>=4.13",
+    "numpy>=2.3",
+    "pandas>=2.3",
+    "requests>=2.32",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12",
+]
+
+[tool.ruff]
+src = ["src"]
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
