@@ -23,7 +23,7 @@ class District(Enum):
     WESOLA = "mazowieckie/warszawa/warszawa/warszawa/wesola"
     WILANOW = "mazowieckie/warszawa/warszawa/warszawa/wilanow"
     WLOCHY = "mazowieckie/warszawa/warszawa/warszawa/wlochy"
-                
+
 
 class ResultLimit(Enum):
     SMALL = 24

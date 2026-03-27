@@ -4,7 +4,6 @@ from pathlib import Path
 from .cleaner.batch_cleaner import BatchCleaner
 from .cleaner.property_cleaner import PropertyDataCleaner
 
-
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )

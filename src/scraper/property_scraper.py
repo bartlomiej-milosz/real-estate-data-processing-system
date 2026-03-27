@@ -1,9 +1,11 @@
-from concurrent.futures import ThreadPoolExecutor
-import requests
-import urllib
 import logging
+import urllib
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional
+
+import requests
 from bs4 import BeautifulSoup, Tag
+
 from ..models.property import Property
 from .config import ALL_DETAILS, HEADERS
 from .search_params import PropertySearchQuery
@@ -128,7 +130,9 @@ class PropertyScraper:
         try:
             containers: List[Tag] = self._find_item_containers(soup)
             for container in containers:
-                label_div: Optional[Tag] = self._find_label_container(container, label_text)
+                label_div: Optional[Tag] = self._find_label_container(
+                    container, label_text
+                )
                 if label_div:
                     value_div: Optional[Tag] = label_div.find_next_sibling("div")
                     if value_div:

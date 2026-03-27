@@ -1,6 +1,6 @@
+import random
 from dataclasses import dataclass, field
 from datetime import datetime
-import random
 from typing import Optional
 
 

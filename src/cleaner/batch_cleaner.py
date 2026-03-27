@@ -1,6 +1,8 @@
 import logging
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+
 from .property_cleaner import PropertyDataCleaner
 
 logger = logging.getLogger(__name__)

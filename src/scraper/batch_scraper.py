@@ -1,11 +1,13 @@
 import logging
-import pandas as pd
 import os
 from typing import List
+
+import pandas as pd
+
 from ..models.property import Property
+from ..models.types import District, ListingType, ResultLimit
 from .property_scraper import PropertyScraper
 from .search_params import PropertySearchQuery
-from ..models.types import District, ListingType, ResultLimit
 
 logger = logging.getLogger(__name__)
 

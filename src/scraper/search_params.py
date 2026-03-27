@@ -1,6 +1,6 @@
 import urllib.parse
 from dataclasses import dataclass
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 from ..models.types import (
     District,
@@ -9,7 +9,6 @@ from ..models.types import (
     ResultLimit,
     SortDirection,
 )
-
 
 BASE_URL = "https://www.otodom.pl/pl/wyniki"
 DEFAULT_PARAMS = {"ownerTypeSingleSelect": "ALL", "by": "DEFAULT", "direction": "DESC"}

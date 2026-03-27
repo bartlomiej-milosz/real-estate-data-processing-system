@@ -1,9 +1,10 @@
 import logging
-from pathlib import Path
 import re
-import pandas as pd
-import numpy as np
+from pathlib import Path
 from typing import Dict, List, Optional
+
+import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -207,7 +208,13 @@ class PropertyDataCleaner:
             df = pd.concat([df, additional_features_df], axis=1)
 
             # Drop original columns that were split
-            columns_to_drop = ["link", "location", "floor", "security", "additional_features"]
+            columns_to_drop = [
+                "link",
+                "location",
+                "floor",
+                "security",
+                "additional_features",
+            ]
             existing_columns_to_drop = [
                 col for col in columns_to_drop if col in df.columns
             ]
@@ -215,7 +222,7 @@ class PropertyDataCleaner:
 
             # Adjust data types - do this AFTER all cleaning
             type_conversions = {}
-            
+
             if "price" in df.columns:
                 type_conversions["price"] = "Int64"
             if "rooms" in df.columns:
@@ -230,7 +237,7 @@ class PropertyDataCleaner:
                 type_conversions["total_floors"] = "Int64"
             if "elevator" in df.columns:
                 type_conversions["elevator"] = "boolean"
-            
+
             # Apply type conversions
             df = df.astype(type_conversions)
 

@@ -1,7 +1,8 @@
 import logging
 from typing import List
-from .scraper.batch_scraper import BatchScraper
+
 from .models.types import District, ListingType, ResultLimit
+from .scraper.batch_scraper import BatchScraper
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
