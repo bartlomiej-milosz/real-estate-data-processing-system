@@ -123,7 +123,7 @@ class PropertyDataCleaner:
         elif elevator_str == "nie":
             return False
         else:
-            return pd.Na
+            return pd.NA
 
     def _extract_security_features(
         self, security_features
