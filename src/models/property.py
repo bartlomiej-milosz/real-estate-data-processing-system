@@ -1,13 +1,20 @@
-import random
+import re
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Optional
+
+_ID_PATTERN = re.compile(r"-(?P<id>ID[A-Za-z0-9]+)/?$")
+
+
+def extract_listing_id(url: str) -> Optional[str]:
+    """Pull the otodom listing id (e.g. 'ID4qABc') from a detail page URL."""
+    match = _ID_PATTERN.search(url.rstrip("/"))
+    return match.group("id") if match else None
 
 
 @dataclass
 class Property:
     link: str
-    id: str = field(default_factory=lambda: Property._generate_smart_id())
+    id: str = field(init=False)
 
     # Basic info
     price: Optional[int] = None
@@ -34,10 +41,8 @@ class Property:
     # Additional features
     additional_features: Optional[str] = None
 
-    @staticmethod
-    def _generate_smart_id() -> str:
-        now = datetime.now()
-        # date_part = now.strftime("%Y%m%d")
-        time_part = now.strftime("%H%M%S")
-        random_part = random.randint(100, 999)
-        return f"{random_part}{time_part}"
+    def __post_init__(self) -> None:
+        listing_id = extract_listing_id(self.link)
+        if listing_id is None:
+            raise ValueError(f"Cannot extract otodom listing id from URL: {self.link}")
+        self.id = listing_id
