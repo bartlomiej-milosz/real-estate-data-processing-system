@@ -64,7 +64,7 @@ class BatchCleaner:
                 df = pd.read_csv(csv_file)
                 combined_dfs.append(df)
                 logger.info(f"Added {len(df)} rows from {csv_file.name}")
-            except Exception as e:
+            except (OSError, pd.errors.ParserError) as e:
                 logger.error(f"Failed to read {csv_file}: {e}")
 
         if combined_dfs:

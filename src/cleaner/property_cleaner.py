@@ -248,5 +248,5 @@ class PropertyDataCleaner:
             logger.info(f"Cleaned and saved: {output_path}")
             logger.info(f"Properties processed: {len(df)}")
 
-        except Exception as e:
+        except (OSError, pd.errors.ParserError, KeyError) as e:
             logger.error(f"Failed to clean {input_path}: {e}")

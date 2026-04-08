@@ -1,5 +1,5 @@
 import logging
-import urllib
+import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional
 
@@ -78,7 +78,7 @@ class PropertyScraper:
                 return int(price_numbers) if price_numbers else None
 
             return None
-        except Exception as e:
+        except (AttributeError, ValueError) as e:
             logger.warning(f"Could not extract price: {e}")
             return None
 
@@ -95,7 +95,7 @@ class PropertyScraper:
             if location_tag:
                 return location_tag.text
             return None
-        except Exception as e:
+        except AttributeError as e:
             logger.warning(f"Could not extract location: {e}")
             return None
 
@@ -138,7 +138,7 @@ class PropertyScraper:
                     if value_div:
                         return value_div.get_text(strip=True)
             return None
-        except Exception as e:
+        except AttributeError as e:
             logger.warning(f"Could not extract field '{label_text}': {e}")
             return None
 
@@ -166,7 +166,7 @@ class PropertyScraper:
                             return " | ".join(features)
 
             return None
-        except Exception as e:
+        except AttributeError as e:
             logger.warning(f"Could not extract additional features: {e}")
             return None
 
@@ -223,7 +223,7 @@ class PropertyScraper:
             logger.info(f"Scraped: {property_obj}")
             return property_obj
 
-        except Exception as e:
+        except (requests.RequestException, ValueError, AttributeError) as e:
             logger.error(f"Failed to scrape {detail_link}: {e}")
             return None
 

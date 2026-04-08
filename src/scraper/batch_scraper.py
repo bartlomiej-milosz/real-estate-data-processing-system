@@ -1,8 +1,11 @@
 import logging
-import os
+import math
+import time
+from pathlib import Path
 from typing import List
 
 import pandas as pd
+import requests
 
 from ..models.property import Property
 from ..models.types import District, ListingType, ResultLimit
@@ -11,22 +14,21 @@ from .search_params import PropertySearchQuery
 
 logger = logging.getLogger(__name__)
 
+_LISTING_TYPE_DIRS = {
+    ListingType.SALE: "sales",
+    ListingType.RENT: "rents",
+}
+
 
 class BatchScraper:
     """Handles batch scraping operations for multiple districts and listing types"""
 
-    def __init__(self, base_output_dir: str = "./data/raw"):
-        self.base_output_dir = base_output_dir
+    def __init__(self, base_output_dir: str | Path = "./data/raw"):
+        self.base_output_dir = Path(base_output_dir)
 
-    def get_output_directory(self, listing_type: ListingType) -> str:
-        """Get output directory based on listing type"""
-
-        if listing_type == ListingType.SALE:
-            return os.path.join(self.base_output_dir, "sales")
-        elif listing_type == ListingType.RENT:
-            return os.path.join(self.base_output_dir, "rents")
-        else:
-            return os.path.join(self.base_output_dir, listing_type.name.lower())
+    def get_output_directory(self, listing_type: ListingType) -> Path:
+        subdir = _LISTING_TYPE_DIRS.get(listing_type, listing_type.name.lower())
+        return self.base_output_dir / subdir
 
     def scrape_district_type(
         self,
@@ -47,7 +49,7 @@ class BatchScraper:
             )
 
             scraper = PropertyScraper(config=config)
-            pages_needed: int = int((max_properties / limit.value) + 1)
+            pages_needed = math.ceil(max_properties / limit.value)
             scraper.scrape_multiple_pages(pages_needed)
 
             properties: List[Property] = scraper.get_properties()[:max_properties]
@@ -56,7 +58,7 @@ class BatchScraper:
 
             return len(properties)
 
-        except Exception as e:
+        except (requests.RequestException, ValueError, OSError) as e:
             logger.error(f"Failed {district.name} - {listing_type.name}: {e}")
             return 0
 
@@ -69,10 +71,10 @@ class BatchScraper:
         """Save properties to CSV file"""
 
         output_dir = self.get_output_directory(listing_type)
-        os.makedirs(output_dir, exist_ok=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-        filename = f"{district.name.lower()}_{listing_type.name.lower()}{'s'}.csv"
-        filepath = os.path.join(output_dir, filename)
+        filename = f"{district.name.lower()}_{listing_type.name.lower()}s.csv"
+        filepath = output_dir / filename
 
         if properties:
             df = pd.DataFrame([prop.__dict__ for prop in properties])
@@ -92,9 +94,10 @@ class BatchScraper:
         delay_seconds: int = 2,
     ) -> int:
         """Scrape multiple district-property listing type combinations"""
-        import time
-
         total_scraped = 0
+
+        last_district = districts[-1]
+        last_listing_type = listing_types[-1]
 
         for district in districts:
             for listing_type in listing_types:
@@ -106,9 +109,10 @@ class BatchScraper:
                 )
                 total_scraped += count
 
-                if not (
-                    district == districts[-1] and listing_type == listing_types[-1]
-                ):
+                is_last = (
+                    district == last_district and listing_type == last_listing_type
+                )
+                if not is_last:
                     logger.info(
                         f"Waiting {delay_seconds} seconds before next scrape..."
                     )
