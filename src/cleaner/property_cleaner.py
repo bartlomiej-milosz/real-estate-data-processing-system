@@ -1,247 +1,162 @@
 import logging
-import re
 from pathlib import Path
-from typing import Dict, List, Optional
 
-import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+_INT_COLUMNS = (
+    "price",
+    "rooms",
+    "maintenance_fee",
+    "year_built",
+    "current_floor",
+    "total_floors",
+)
+_SECURITY_FEATURES = {
+    "gated_area": "teren zamknięty",
+    "monitoring": "monitoring",
+    "security_guard": "ochrona",
+}
+_ADDITIONAL_FEATURES = {
+    "balcony": "balkon",
+    "parking": "garaż/miejsce parkingowe",
+    "terrace": "taras",
+    "garden": "ogródek",
+    "basement": "piwnica",
+    "utility_rooms": "pom. użytkowe",
+    "non_smokers_only": "tylko dla niepalących",
+    "students_allowed": "wynajmę również studentom",
+    "separate_kitchen": "oddzielna kuchnia",
+}
+
 
 class PropertyDataCleaner:
-    def __init__(self):
-        pd.set_option("display.max_colwidth", None)
+    """Vectorised pandas pipeline turning raw scraped strings into typed columns."""
 
-    def _clean_price(self, price) -> Optional[int]:
-        """Clean price data - remove any non-numeric characters except digits"""
-        if pd.isna(price):
-            return pd.NA
+    def _digits_to_int(self, series: pd.Series) -> pd.Series:
+        return (
+            series.astype("string")
+            .str.replace(r"[^\d]", "", regex=True)
+            .replace("", pd.NA)
+            .astype("Int64")
+        )
 
-        # Convert to string and extract only digits
-        price_str = str(price)
-        price_numbers = re.sub(r"[^\d]", "", price_str)
+    def _first_int(self, series: pd.Series) -> pd.Series:
+        return (
+            series.astype("string")
+            .str.extract(r"(\d+)", expand=False)
+            .astype("Int64")
+        )
 
-        if price_numbers:
-            return int(price_numbers)
-        return pd.NA
+    def _first_float(self, series: pd.Series) -> pd.Series:
+        return (
+            series.astype("string")
+            .str.extract(r"(\d+(?:\.\d+)?)", expand=False)
+            .astype("Float64")
+        )
 
-    def _clean_maintenance_fee(self, fee) -> Optional[int]:
-        """Extract numeric maintenance fee"""
-        if pd.isna(fee):
-            return np.nan
+    def _year_built(self, series: pd.Series) -> pd.Series:
+        return (
+            series.astype("string")
+            .str.extract(r"((?:19|20)\d{2})", expand=False)
+            .astype("Int64")
+        )
 
-        # Extract numbers from maintenance fee
-        match = re.search(r"\d+", str(fee))
-        if match:
-            return int(match.group(0))
-        return np.nan
+    def _elevator(self, series: pd.Series) -> pd.Series:
+        lowered = series.astype("string").str.lower().str.strip()
+        return lowered.map({"tak": True, "nie": False}).astype("boolean")
 
-    def _clean_area(self, area) -> Optional[float]:
-        if pd.isna(area):
-            return np.nan
+    def _split_location(self, series: pd.Series) -> pd.DataFrame:
+        parts = series.astype("string").str.split(", ", expand=True)
+        result = pd.DataFrame(
+            {"district": pd.NA, "neighborhood": pd.NA, "street": pd.NA},
+            index=series.index,
+            dtype="string",
+        )
 
-        match = re.search(r"\d+(?:\.\d+)?", str(area))
-        if match:
-            return float(match.group(0))
-        return np.nan
+        four = parts.notna().sum(axis=1) == 4
+        five = parts.notna().sum(axis=1) == 5
 
-    def _clean_rooms(self, rooms) -> Optional[int]:
-        """Extract number of rooms"""
-        if pd.isna(rooms):
-            return pd.NA
+        if four.any():
+            result.loc[four, "neighborhood"] = parts.loc[four, 0]
+            result.loc[four, "district"] = parts.loc[four, 1]
+        if five.any():
+            result.loc[five, "street"] = parts.loc[five, 0]
+            result.loc[five, "neighborhood"] = parts.loc[five, 1]
+            result.loc[five, "district"] = parts.loc[five, 2]
 
-        match = re.search(r"\d+", str(rooms))
-        if match:
-            return int(match.group(0))
-        return pd.NA
+        return result
 
-    def _clean_year_built(self, year) -> Optional[int]:
-        """Extract year built"""
-        if pd.isna(year):
-            return pd.NA
-
-        match = re.search(r"\b(19|20)\d{2}\b", str(year))
-        if match:
-            return int(match.group(0))
-        return pd.NA
-
-    def _split_location(self, location) -> Dict[str, Optional[str]]:
-        if pd.isna(location):
-            return {"district": pd.NA, "neighborhood": pd.NA, "street": pd.NA}
-
-        parts: List[str] = location.split(", ")
-        if len(parts) == 4:
-            district = parts[1]
-            neighborhood = parts[0]
-            street = pd.NA
-        elif len(parts) == 5:
-            district = parts[2]
-            neighborhood = parts[1]
-            street = parts[0]
+    def _split_floor(self, series: pd.Series) -> pd.DataFrame:
+        as_str = series.astype("string").str.strip()
+        parts = as_str.str.split("/", n=1, expand=True)
+        current = parts[0].str.strip().replace({"parter": "0"})
+        if parts.shape[1] > 1:
+            total = parts[1].str.strip()
         else:
-            district = pd.NA
-            neighborhood = pd.NA
-            street = pd.NA
+            total = pd.Series(pd.NA, index=series.index)
 
-        return {"district": district, "neighborhood": neighborhood, "street": street}
+        to_int = lambda s: pd.to_numeric(s, errors="coerce").astype("Int64")  # noqa: E731
+        return pd.DataFrame(
+            {"current_floor": to_int(current), "total_floors": to_int(total)}
+        )
 
-    def _split_floor(self, floor) -> Dict[str, Optional[int]]:
-        if pd.isna(floor):
-            return {"current_floor": pd.NA, "total_floors": pd.NA}
-
-        if "/" in str(floor):
-            parts: List[str] = floor.split("/")
-            current: str = parts[0].strip()
-            total: Optional[str] = parts[1].strip() if len(parts) > 1 else pd.NA
-        else:
-            current: str = str(floor).strip()
-            total = pd.NA
-
-        # Convert "parter" to 0 (ground floor)
-        if current == "parter":
-            current = "0"
-
-        # Handle non-numeric values
-        def safe_int(value):
-            if value is pd.NA:
-                return pd.NA
-            try:
-                return int(value)
-            except ValueError:
-                return pd.NA
-
-        return {"current_floor": safe_int(current), "total_floors": safe_int(total)}
-
-    def _clean_elevator(self, is_elevator) -> Optional[bool]:
-        if pd.isna(is_elevator):
-            return pd.NA
-
-        elevator_str: str = str(is_elevator).lower().strip()
-        if elevator_str == "tak":
-            return True
-        elif elevator_str == "nie":
-            return False
-        else:
-            return pd.NA
-
-    def _extract_security_features(
-        self, security_features
-    ) -> Dict[str, Optional[bool]]:
-        if pd.isna(security_features):
-            return {"gated_area": pd.NA, "monitoring": pd.NA, "security_guard": pd.NA}
-
-        security_features_str: str = str(security_features).lower().strip()
-        return {
-            "gated_area": "teren zamknięty" in security_features_str,
-            "monitoring": "monitoring" in security_features_str,
-            "security_guard": "ochrona" in security_features_str,
-        }
-
-    def _extract_additional_features(
-        self, additional_features
-    ) -> Dict[str, Optional[bool]]:
-        if pd.isna(additional_features):
-            return {
-                "balcony": pd.NA,
-                "parking": pd.NA,
-                "terrace": pd.NA,
-                "garden": pd.NA,
-                "basement": pd.NA,
-                "utility_rooms": pd.NA,
-                "non_smokers_only": pd.NA,
-                "students_allowed": pd.NA,
-                "separate_kitchen": pd.NA,
-            }
-
-        features_str: str = str(additional_features).lower().strip()
-
-        return {
-            "balcony": "balkon" in features_str,
-            "parking": "garaż/miejsce parkingowe" in features_str,
-            "terrace": "taras" in features_str,
-            "garden": "ogródek" in features_str,
-            "basement": "piwnica" in features_str,
-            "utility_rooms": "pom. użytkowe" in features_str,
-            "non_smokers_only": "tylko dla niepalących" in features_str,
-            "students_allowed": "wynajmę również studentom" in features_str,
-            "separate_kitchen": "oddzielna kuchnia" in features_str,
-        }
+    def _flags_from_text(
+        self, series: pd.Series, mapping: dict[str, str]
+    ) -> pd.DataFrame:
+        lowered = series.astype("string").str.lower().str.strip()
+        present = lowered.notna()
+        result = pd.DataFrame(
+            {column: pd.NA for column in mapping},
+            index=series.index,
+            dtype="boolean",
+        )
+        for column, needle in mapping.items():
+            result.loc[present, column] = lowered.loc[present].str.contains(
+                needle, regex=False, na=False
+            )
+        return result
 
     def clean_single_file(self, input_path: Path, output_path: Path) -> None:
-        """Clean a single CSV file"""
-
         try:
             logger.info(f"Cleaning: {input_path}")
             df = pd.read_csv(input_path)
 
-            # Apply cleaning functions
-            df["price"] = df["price"].apply(self._clean_price)
-            df["area"] = df["area"].apply(self._clean_area)
-            df["rooms"] = df["rooms"].apply(self._clean_rooms)
-            df["maintenance_fee"] = df["maintenance_fee"].apply(
-                self._clean_maintenance_fee
+            df["price"] = self._digits_to_int(df["price"])
+            df["area"] = self._first_float(df["area"])
+            df["rooms"] = self._first_int(df["rooms"])
+            df["maintenance_fee"] = self._first_int(df["maintenance_fee"])
+            df["year_built"] = self._year_built(df["year_built"])
+            df["elevator"] = self._elevator(df["elevator"])
+
+            df = pd.concat([df, self._split_location(df["location"])], axis=1)
+            df = pd.concat([df, self._split_floor(df["floor"])], axis=1)
+            df = pd.concat(
+                [df, self._flags_from_text(df["security"], _SECURITY_FEATURES)],
+                axis=1,
             )
-            df["year_built"] = df["year_built"].apply(self._clean_year_built)
-            df["elevator"] = df["elevator"].apply(self._clean_elevator)
-
-            # Split location into separate columns
-            location_split = df["location"].apply(self._split_location)
-            location_df = pd.DataFrame(location_split.to_list())
-            df = pd.concat([df, location_df], axis=1)
-
-            # Split floor information
-            floor_split = df["floor"].apply(self._split_floor)
-            floor_df = pd.DataFrame(floor_split.to_list())
-            df = pd.concat([df, floor_df], axis=1)
-
-            # Extract security features
-            security_features = df["security"].apply(self._extract_security_features)
-            security_df = pd.DataFrame(security_features.to_list())
-            df = pd.concat([df, security_df], axis=1)
-
-            # Extract additional features
-            additional_features_data = df["additional_features"].apply(
-                self._extract_additional_features
+            df = pd.concat(
+                [
+                    df,
+                    self._flags_from_text(
+                        df["additional_features"], _ADDITIONAL_FEATURES
+                    ),
+                ],
+                axis=1,
             )
-            additional_features_df = pd.DataFrame(additional_features_data.to_list())
-            df = pd.concat([df, additional_features_df], axis=1)
 
-            # Drop original columns that were split
-            columns_to_drop = [
-                "link",
-                "location",
-                "floor",
-                "security",
-                "additional_features",
-            ]
-            existing_columns_to_drop = [
-                col for col in columns_to_drop if col in df.columns
-            ]
-            df = df.drop(existing_columns_to_drop, axis=1)
+            df = df.drop(
+                columns=[
+                    "link",
+                    "location",
+                    "floor",
+                    "security",
+                    "additional_features",
+                ],
+                errors="ignore",
+            )
 
-            # Adjust data types - do this AFTER all cleaning
-            type_conversions = {}
-
-            if "price" in df.columns:
-                type_conversions["price"] = "Int64"
-            if "rooms" in df.columns:
-                type_conversions["rooms"] = "Int64"
-            if "maintenance_fee" in df.columns:
-                type_conversions["maintenance_fee"] = "Int64"
-            if "year_built" in df.columns:
-                type_conversions["year_built"] = "Int64"
-            if "current_floor" in df.columns:
-                type_conversions["current_floor"] = "Int64"
-            if "total_floors" in df.columns:
-                type_conversions["total_floors"] = "Int64"
-            if "elevator" in df.columns:
-                type_conversions["elevator"] = "boolean"
-
-            # Apply type conversions
-            df = df.astype(type_conversions)
-
-            # Save cleaned data
             output_path.parent.mkdir(parents=True, exist_ok=True)
             df.to_csv(output_path, index=False, encoding="utf-8-sig")
 
