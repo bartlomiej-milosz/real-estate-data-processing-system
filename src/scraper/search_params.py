@@ -56,8 +56,7 @@ class PropertySearchQuery:
         """Build location-specific parameters"""
         if len(self.locations) > 1:
             locations_list = [district.value for district in self.locations]
-            locations_string = "[" + ",".join(locations_list) + "]"
-            return {"locations": urllib.parse.quote(locations_string)}
+            return {"locations": "[" + ",".join(locations_list) + "]"}
         return {}
 
     def _build_price_params(self) -> Dict[str, str]:
@@ -95,8 +94,7 @@ class PropertySearchQuery:
 
         base_url = self._build_base_url()
         params = self._build_all_params(page)
-
-        query_string = "&".join(f"{key}={value}" for key, value in params.items())
+        query_string = urllib.parse.urlencode(params, safe="/")
 
         return f"{base_url}?{query_string}"
 
