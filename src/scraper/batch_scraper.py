@@ -7,10 +7,10 @@ from typing import List
 import pandas as pd
 import requests
 
-from ..models.property import Property
+from ..models.property import ScrapedListing
 from ..models.types import District, ListingType, ResultLimit
-from .property_scraper import PropertyScraper
-from .search_params import PropertySearchQuery
+from .property_scraper import ScrapedListingScraper
+from .search_params import ScrapedListingSearchQuery
 
 logger = logging.getLogger(__name__)
 
@@ -42,17 +42,17 @@ class BatchScraper:
         logger.info(f"Scraping {district.name} - {listing_type.name}")
 
         try:
-            config = PropertySearchQuery(
+            config = ScrapedListingSearchQuery(
                 locations=[district],
                 listing_type=listing_type,
                 limit=limit,
             )
 
-            scraper = PropertyScraper(config=config)
+            scraper = ScrapedListingScraper(config=config)
             pages_needed = math.ceil(max_properties / limit.value)
             scraper.scrape_multiple_pages(pages_needed)
 
-            properties: List[Property] = scraper.get_properties()[:max_properties]
+            properties: List[ScrapedListing] = scraper.get_properties()[:max_properties]
 
             self._save_properties(properties, district, listing_type)
 
@@ -64,7 +64,7 @@ class BatchScraper:
 
     def _save_properties(
         self,
-        properties: List[Property],
+        properties: List[ScrapedListing],
         district: District,
         listing_type: ListingType,
     ) -> None:
@@ -77,7 +77,7 @@ class BatchScraper:
         filepath = output_dir / filename
 
         if properties:
-            df = pd.DataFrame([prop.__dict__ for prop in properties])
+            df = pd.DataFrame([prop.model_dump() for prop in properties])
             df.to_csv(filepath, index=False, encoding="utf-8-sig")
             logger.info(f"Saved {len(properties)} properties to {filepath}")
         else:

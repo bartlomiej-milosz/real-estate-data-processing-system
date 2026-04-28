@@ -2,29 +2,29 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
 
-from ..models.property import Property
+from ..models.property import ScrapedListing
 from .http_client import HttpClient
 from .parser import parse_listing_links, parse_property_detail
-from .search_params import PropertySearchQuery
+from .search_params import ScrapedListingSearchQuery
 
 logger = logging.getLogger(__name__)
 
 
-class PropertyScraper:
+class ScrapedListingScraper:
     """Orchestrates listing discovery and detail page scraping for one query."""
 
     def __init__(
         self,
-        config: PropertySearchQuery,
+        config: ScrapedListingSearchQuery,
         http_client: Optional[HttpClient] = None,
         max_workers: int = 5,
     ):
         self.config = config
         self.http = http_client or HttpClient()
         self.max_workers = max_workers
-        self.properties: List[Property] = []
+        self.properties: List[ScrapedListing] = []
 
-    def get_properties(self) -> List[Property]:
+    def get_properties(self) -> List[ScrapedListing]:
         return self.properties
 
     def get_properties_count(self) -> int:
@@ -41,7 +41,7 @@ class PropertyScraper:
 
         logger.info(f"Finished! Total: {len(self.properties)} properties")
 
-    def _scrape_page(self, page: int) -> List[Property]:
+    def _scrape_page(self, page: int) -> List[ScrapedListing]:
         if page < 1:
             raise ValueError("Page must be 1 or greater")
 
@@ -57,7 +57,7 @@ class PropertyScraper:
             results = list(executor.map(self._scrape_detail, links))
         return [p for p in results if p is not None]
 
-    def _scrape_detail(self, url: str) -> Optional[Property]:
+    def _scrape_detail(self, url: str) -> Optional[ScrapedListing]:
         logger.info(f"Scraping: {url}")
         html = self.http.get(url)
         if html is None:
@@ -65,26 +65,7 @@ class PropertyScraper:
 
         try:
             data = parse_property_detail(html)
-            return Property(
-                link=url,
-                price=data.get("price"),
-                location=data.get("location"),
-                area=data.get("area"),
-                rooms=data.get("rooms"),
-                heating=data.get("heating"),
-                floor=data.get("floor"),
-                maintenance_fee=data.get("maintenance_fee"),
-                condition=data.get("condition"),
-                market=data.get("market"),
-                ownership=data.get("ownership"),
-                advertiser_type=data.get("advertiser_type"),
-                year_built=data.get("year_built"),
-                elevator=data.get("elevator"),
-                building_type=data.get("building_type"),
-                windows=data.get("windows"),
-                security=data.get("security"),
-                additional_features=data.get("additional_features"),
-            )
+            return ScrapedListing(link=url, **data)
         except ValueError as e:
-            logger.error(f"Failed to build Property for {url}: {e}")
+            logger.error(f"Failed to build ScrapedListing for {url}: {e}")
             return None
