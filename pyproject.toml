@@ -5,10 +5,10 @@ description = "Automated pipeline for scraping and normalizing real estate listi
 requires-python = ">=3.13"
 dependencies = [
     "beautifulsoup4>=4.13",
+    "httpx>=0.28.1",
     "numpy>=2.3",
     "pandas>=2.3",
     "pydantic>=2.13.4",
-    "requests>=2.32",
     "tenacity>=9.1.4",
 ]
 

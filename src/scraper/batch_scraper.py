@@ -1,16 +1,17 @@
+import asyncio
 import logging
 import math
-import time
 from pathlib import Path
 from typing import List
 
+import httpx
 import pandas as pd
-import requests
 
 from ..models.property import ScrapedListing
 from ..models.types import District, ListingType, ResultLimit
-from .property_scraper import ScrapedListingScraper
-from .search_params import ScrapedListingSearchQuery
+from .http_client import AsyncHttpClient
+from .property_scraper import PropertyScraper
+from .search_params import PropertySearchQuery
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ _LISTING_TYPE_DIRS = {
 
 
 class BatchScraper:
-    """Handles batch scraping operations for multiple districts and listing types"""
+    """Scrapes district x listing-type combinations sharing one HTTP client."""
 
     def __init__(self, base_output_dir: str | Path = "./data/raw"):
         self.base_output_dir = Path(base_output_dir)
@@ -30,35 +31,30 @@ class BatchScraper:
         subdir = _LISTING_TYPE_DIRS.get(listing_type, listing_type.name.lower())
         return self.base_output_dir / subdir
 
-    def scrape_district_type(
+    async def scrape_district_type(
         self,
+        http: AsyncHttpClient,
         district: District,
         listing_type: ListingType,
         limit: ResultLimit,
         max_properties: int,
     ) -> int:
-        """Scrape one district-property type combination"""
-
         logger.info(f"Scraping {district.name} - {listing_type.name}")
-
         try:
-            config = ScrapedListingSearchQuery(
+            config = PropertySearchQuery(
                 locations=[district],
                 listing_type=listing_type,
                 limit=limit,
             )
-
-            scraper = ScrapedListingScraper(config=config)
+            scraper = PropertyScraper(config=config, http_client=http)
             pages_needed = math.ceil(max_properties / limit.value)
-            scraper.scrape_multiple_pages(pages_needed)
+            await scraper.scrape_multiple_pages(pages_needed)
 
-            properties: List[ScrapedListing] = scraper.get_properties()[:max_properties]
-
+            properties = scraper.get_properties()[:max_properties]
             self._save_properties(properties, district, listing_type)
-
             return len(properties)
 
-        except (requests.RequestException, ValueError, OSError) as e:
+        except (httpx.HTTPError, ValueError, OSError) as e:
             logger.error(f"Failed {district.name} - {listing_type.name}: {e}")
             return 0
 
@@ -68,8 +64,6 @@ class BatchScraper:
         district: District,
         listing_type: ListingType,
     ) -> None:
-        """Save properties to CSV file"""
-
         output_dir = self.get_output_directory(listing_type)
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -85,7 +79,7 @@ class BatchScraper:
                 f"No properties found for {district.name} - {listing_type.name}"
             )
 
-    def scrape_multiple_combinations(
+    async def scrape_multiple_combinations(
         self,
         districts: List[District],
         listing_types: List[ListingType],
@@ -93,29 +87,29 @@ class BatchScraper:
         max_properties: int,
         delay_seconds: int = 2,
     ) -> int:
-        """Scrape multiple district-property listing type combinations"""
         total_scraped = 0
+        last_district, last_listing_type = districts[-1], listing_types[-1]
 
-        last_district = districts[-1]
-        last_listing_type = listing_types[-1]
-
-        for district in districts:
-            for listing_type in listing_types:
-                count = self.scrape_district_type(
-                    district=district,
-                    listing_type=listing_type,
-                    limit=limit,
-                    max_properties=max_properties,
-                )
-                total_scraped += count
-
-                is_last = (
-                    district == last_district and listing_type == last_listing_type
-                )
-                if not is_last:
-                    logger.info(
-                        f"Waiting {delay_seconds} seconds before next scrape..."
+        async with AsyncHttpClient() as http:
+            for district in districts:
+                for listing_type in listing_types:
+                    count = await self.scrape_district_type(
+                        http=http,
+                        district=district,
+                        listing_type=listing_type,
+                        limit=limit,
+                        max_properties=max_properties,
                     )
-                    time.sleep(delay_seconds)
+                    total_scraped += count
+
+                    is_last = (
+                        district == last_district
+                        and listing_type == last_listing_type
+                    )
+                    if not is_last:
+                        logger.info(
+                            f"Waiting {delay_seconds}s before next scrape..."
+                        )
+                        await asyncio.sleep(delay_seconds)
 
         return total_scraped

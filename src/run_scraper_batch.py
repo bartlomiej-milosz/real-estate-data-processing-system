@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import List
 
@@ -15,13 +16,11 @@ LISTING_TYPES: List[ListingType] = list(ListingType)
 MAX_PROPERTIES: int = 500
 
 
-def main():
-    """Main scraping function - orchestrates the entire scraping process"""
+async def main() -> None:
     logger.info("Starting property scraping...")
 
     batch_scraper = BatchScraper()
-
-    total_scraped = batch_scraper.scrape_multiple_combinations(
+    total_scraped = await batch_scraper.scrape_multiple_combinations(
         districts=WARSAW_DISTRICTS,
         listing_types=LISTING_TYPES,
         limit=ResultLimit.XLARGE,
@@ -34,4 +33,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
