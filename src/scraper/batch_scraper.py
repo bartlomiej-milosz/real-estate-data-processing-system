@@ -9,6 +9,7 @@ import pandas as pd
 
 from ..models.property import ScrapedListing
 from ..models.types import District, ListingType, ResultLimit
+from ..storage.repository import PropertyRepository
 from .http_client import AsyncHttpClient
 from .property_scraper import PropertyScraper
 from .search_params import PropertySearchQuery
@@ -24,7 +25,12 @@ _LISTING_TYPE_DIRS = {
 class BatchScraper:
     """Scrapes district x listing-type combinations sharing one HTTP client."""
 
-    def __init__(self, base_output_dir: str | Path = "./data/raw"):
+    def __init__(
+        self,
+        repository: PropertyRepository | None = None,
+        base_output_dir: str | Path = "./data/raw",
+    ):
+        self.repository = repository
         self.base_output_dir = Path(base_output_dir)
 
     def get_output_directory(self, listing_type: ListingType) -> Path:
@@ -51,33 +57,39 @@ class BatchScraper:
             await scraper.scrape_multiple_pages(pages_needed)
 
             properties = scraper.get_properties()[:max_properties]
-            self._save_properties(properties, district, listing_type)
+            self._persist(properties, district, listing_type)
             return len(properties)
 
         except (httpx.HTTPError, ValueError, OSError) as e:
             logger.error(f"Failed {district.name} - {listing_type.name}: {e}")
             return 0
 
-    def _save_properties(
+    def _persist(
         self,
         properties: List[ScrapedListing],
         district: District,
         listing_type: ListingType,
     ) -> None:
-        output_dir = self.get_output_directory(listing_type)
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        filename = f"{district.name.lower()}_{listing_type.name.lower()}s.csv"
-        filepath = output_dir / filename
-
-        if properties:
-            df = pd.DataFrame([prop.model_dump() for prop in properties])
-            df.to_csv(filepath, index=False, encoding="utf-8-sig")
-            logger.info(f"Saved {len(properties)} properties to {filepath}")
-        else:
+        if not properties:
             logger.warning(
                 f"No properties found for {district.name} - {listing_type.name}"
             )
+            return
+
+        if self.repository is not None:
+            written = self.repository.save_raw(properties, listing_type)
+            logger.info(
+                f"Saved {written} raw rows to repository "
+                f"({district.name} - {listing_type.name})"
+            )
+
+        output_dir = self.get_output_directory(listing_type)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"{district.name.lower()}_{listing_type.name.lower()}s.csv"
+        filepath = output_dir / filename
+        df = pd.DataFrame([prop.model_dump() for prop in properties])
+        df.to_csv(filepath, index=False, encoding="utf-8-sig")
+        logger.info(f"Saved {len(properties)} properties to {filepath}")
 
     async def scrape_multiple_combinations(
         self,

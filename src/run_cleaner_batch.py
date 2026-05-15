@@ -2,7 +2,8 @@ import logging
 from pathlib import Path
 
 from .cleaner.batch_cleaner import BatchCleaner
-from .cleaner.property_cleaner import PropertyDataCleaner
+from .models.types import ListingType
+from .storage.repository import PropertyRepository
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -11,33 +12,22 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def main():
-    """Main function to run the data cleaning process"""
-
+def main() -> None:
     logger.info("Starting property data cleaning...")
 
-    property_cleaner = PropertyDataCleaner()
-    batch_cleaner = BatchCleaner(
-        property_cleaner=property_cleaner,
-        raw_dir="./data/raw",
-        clean_dir="./data/clean",
+    repository = PropertyRepository()
+    batch_cleaner = BatchCleaner(repository=repository)
+    results = batch_cleaner.clean_all()
+
+    for listing_type, count in results.items():
+        logger.info(f"{listing_type.name}: {count} cleaned rows")
+
+    combined_dir = Path("./data/clean/combined")
+    batch_cleaner.export_combined_csv(
+        ListingType.RENT, combined_dir / "warsaw_all_rents.csv"
     )
-
-    batch_cleaner.clean_all_files()
-
-    logger.info("Data cleaning completed!")
-    logger.info("Check ./data/clean/rents/ and ./data/clean/sales/ for results")
-
-    clean_rents_dir = Path("./data/clean/rents")
-    clean_sales_dir = Path("./data/clean/sales")
-    combined_output_dir = Path("./data/clean/combined")
-    combined_output_dir.mkdir(parents=True, exist_ok=True)
-
-    batch_cleaner.combine_csv_files(
-        clean_rents_dir, combined_output_dir / "warsaw_all_rents.csv"
-    )
-    batch_cleaner.combine_csv_files(
-        clean_sales_dir, combined_output_dir / "warsaw_all_sales.csv"
+    batch_cleaner.export_combined_csv(
+        ListingType.SALE, combined_dir / "warsaw_all_sales.csv"
     )
 
 

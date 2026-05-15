@@ -1,18 +1,18 @@
+"""Vectorised pandas pipeline turning raw scraped strings into typed columns.
+
+Input: DataFrame of raw scraped listings (string fields).
+Output: DataFrame matching the `Property` schema.
+"""
+
 import logging
-from pathlib import Path
+from typing import List
 
 import pandas as pd
 
+from ..models.property import Property
+
 logger = logging.getLogger(__name__)
 
-_INT_COLUMNS = (
-    "price",
-    "rooms",
-    "maintenance_fee",
-    "year_built",
-    "current_floor",
-    "total_floors",
-)
 _SECURITY_FEATURES = {
     "gated_area": "teren zamknięty",
     "monitoring": "monitoring",
@@ -30,9 +30,56 @@ _ADDITIONAL_FEATURES = {
     "separate_kitchen": "oddzielna kuchnia",
 }
 
+_PROPERTY_COLUMNS = [
+    "id", "link",
+    "price", "area", "rooms", "maintenance_fee", "year_built",
+    "heating", "condition", "market", "ownership", "advertiser_type",
+    "building_type", "windows", "elevator",
+    "district", "neighborhood", "street",
+    "current_floor", "total_floors",
+    "gated_area", "monitoring", "security_guard",
+    "balcony", "parking", "terrace", "garden", "basement",
+    "utility_rooms", "non_smokers_only", "students_allowed", "separate_kitchen",
+]
+
 
 class PropertyDataCleaner:
-    """Vectorised pandas pipeline turning raw scraped strings into typed columns."""
+    """Pure transformer: raw scraped DataFrame -> cleaned typed DataFrame / models."""
+
+    def clean_dataframe(self, raw: pd.DataFrame) -> pd.DataFrame:
+        df = raw.copy()
+
+        df["price"] = self._digits_to_int(df["price"])
+        df["area"] = self._first_float(df["area"])
+        df["rooms"] = self._first_int(df["rooms"])
+        df["maintenance_fee"] = self._first_int(df["maintenance_fee"])
+        df["year_built"] = self._year_built(df["year_built"])
+        df["elevator"] = self._elevator(df["elevator"])
+
+        df = pd.concat([df, self._split_location(df["location"])], axis=1)
+        df = pd.concat([df, self._split_floor(df["floor"])], axis=1)
+        df = pd.concat(
+            [df, self._flags_from_text(df["security"], _SECURITY_FEATURES)],
+            axis=1,
+        )
+        df = pd.concat(
+            [
+                df,
+                self._flags_from_text(
+                    df["additional_features"], _ADDITIONAL_FEATURES
+                ),
+            ],
+            axis=1,
+        )
+
+        return df.reindex(columns=_PROPERTY_COLUMNS)
+
+    def clean_to_models(self, raw: pd.DataFrame) -> List[Property]:
+        cleaned = self.clean_dataframe(raw).astype(object)
+        cleaned = cleaned.where(pd.notna(cleaned), None)
+        return [Property(**record) for record in cleaned.to_dict(orient="records")]
+
+    # --- column transforms -------------------------------------------------
 
     def _digits_to_int(self, series: pd.Series) -> pd.Series:
         return (
@@ -117,51 +164,3 @@ class PropertyDataCleaner:
                 needle, regex=False, na=False
             )
         return result
-
-    def clean_single_file(self, input_path: Path, output_path: Path) -> None:
-        try:
-            logger.info(f"Cleaning: {input_path}")
-            df = pd.read_csv(input_path)
-
-            df["price"] = self._digits_to_int(df["price"])
-            df["area"] = self._first_float(df["area"])
-            df["rooms"] = self._first_int(df["rooms"])
-            df["maintenance_fee"] = self._first_int(df["maintenance_fee"])
-            df["year_built"] = self._year_built(df["year_built"])
-            df["elevator"] = self._elevator(df["elevator"])
-
-            df = pd.concat([df, self._split_location(df["location"])], axis=1)
-            df = pd.concat([df, self._split_floor(df["floor"])], axis=1)
-            df = pd.concat(
-                [df, self._flags_from_text(df["security"], _SECURITY_FEATURES)],
-                axis=1,
-            )
-            df = pd.concat(
-                [
-                    df,
-                    self._flags_from_text(
-                        df["additional_features"], _ADDITIONAL_FEATURES
-                    ),
-                ],
-                axis=1,
-            )
-
-            df = df.drop(
-                columns=[
-                    "link",
-                    "location",
-                    "floor",
-                    "security",
-                    "additional_features",
-                ],
-                errors="ignore",
-            )
-
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            df.to_csv(output_path, index=False, encoding="utf-8-sig")
-
-            logger.info(f"Cleaned and saved: {output_path}")
-            logger.info(f"Properties processed: {len(df)}")
-
-        except (OSError, pd.errors.ParserError, KeyError) as e:
-            logger.error(f"Failed to clean {input_path}: {e}")

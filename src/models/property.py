@@ -21,9 +21,9 @@ def extract_listing_id(url: str) -> Optional[str]:
 
 
 class ScrapedListing(BaseModel):
-    """Raw scraped data — string-based, lenient."""
+    """Raw scraped data — string-based, lenient about numeric inputs."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, coerce_numbers_to_str=True)
 
     link: str
     id: str = Field(default="")
