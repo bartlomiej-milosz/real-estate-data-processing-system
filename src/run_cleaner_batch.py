@@ -1,12 +1,13 @@
 import logging
-from pathlib import Path
 
 from .cleaner.batch_cleaner import BatchCleaner
+from .config import settings
 from .models.types import ListingType
 from .storage.repository import PropertyRepository
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=settings.log_level,
+    format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ def main() -> None:
     for listing_type, count in results.items():
         logger.info(f"{listing_type.name}: {count} cleaned rows")
 
-    combined_dir = Path("./data/clean/combined")
+    combined_dir = settings.clean_dir / "combined"
     batch_cleaner.export_combined_csv(
         ListingType.RENT, combined_dir / "warsaw_all_rents.csv"
     )

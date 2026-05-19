@@ -12,16 +12,23 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session, sessionmaker
 
+from ..config import settings
 from ..models.property import Property, ScrapedListing
 from ..models.types import ListingType
 from .models import Base, PropertyRow, RawListingRow
 
 
 class PropertyRepository:
-    def __init__(self, db_url: str | Path = "sqlite:///./data/properties.db"):
-        if isinstance(db_url, Path):
-            db_url = f"sqlite:///{db_url}"
-        self._engine = create_engine(str(db_url), future=True)
+    def __init__(self, db_url: str | Path | None = None):
+        url = db_url or settings.database_url
+        if isinstance(url, Path):
+            url = f"sqlite:///{url}"
+        # ensure parent dir exists for default sqlite path
+        if url.startswith("sqlite:///"):
+            Path(url.removeprefix("sqlite:///")).parent.mkdir(
+                parents=True, exist_ok=True
+            )
+        self._engine = create_engine(str(url), future=True)
         Base.metadata.create_all(self._engine)
         self._Session: sessionmaker[Session] = sessionmaker(
             self._engine, expire_on_commit=False

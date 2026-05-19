@@ -11,6 +11,7 @@ from tenacity import (
     wait_exponential_jitter,
 )
 
+from ..config import settings
 from .config import HEADERS
 
 logger = logging.getLogger(__name__)
@@ -30,16 +31,18 @@ class AsyncHttpClient:
     def __init__(
         self,
         base_headers: Optional[dict[str, str]] = None,
-        max_attempts: int = 4,
-        max_concurrent: int = 5,
-        timeout: float = 30.0,
+        max_attempts: int | None = None,
+        max_concurrent: int | None = None,
+        timeout: float | None = None,
     ) -> None:
         self._headers = base_headers or HEADERS
-        self._max_attempts = max_attempts
-        self._semaphore = asyncio.Semaphore(max_concurrent)
+        self._max_attempts = max_attempts or settings.http_max_attempts
+        self._semaphore = asyncio.Semaphore(
+            max_concurrent or settings.http_max_concurrent
+        )
         self._client = httpx.AsyncClient(
             headers=self._headers,
-            timeout=timeout,
+            timeout=timeout or settings.http_timeout_seconds,
             follow_redirects=True,
         )
 

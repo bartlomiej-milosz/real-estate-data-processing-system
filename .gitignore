@@ -45,3 +45,6 @@ build/
 .idea
 .ruff_cache
 .claude/
+*.db
+*.sqlite
+*.sqlite3
