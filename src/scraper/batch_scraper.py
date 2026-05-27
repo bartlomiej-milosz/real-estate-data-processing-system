@@ -44,6 +44,7 @@ class BatchScraper:
         listing_type: ListingType,
         limit: ResultLimit,
         max_properties: int,
+        skip_ids: set[str] | None = None,
     ) -> int:
         logger.info(f"Scraping {district.name} - {listing_type.name}")
         try:
@@ -52,7 +53,9 @@ class BatchScraper:
                 listing_type=listing_type,
                 limit=limit,
             )
-            scraper = PropertyScraper(config=config, http_client=http)
+            scraper = PropertyScraper(
+                config=config, http_client=http, skip_ids=skip_ids
+            )
             pages_needed = math.ceil(max_properties / limit.value)
             await scraper.scrape_multiple_pages(pages_needed)
 
@@ -98,9 +101,21 @@ class BatchScraper:
         limit: ResultLimit,
         max_properties: int,
         delay_seconds: int = 2,
+        resume: bool = False,
     ) -> int:
         total_scraped = 0
         last_district, last_listing_type = districts[-1], listing_types[-1]
+
+        skip_ids_by_type: dict[ListingType, set[str]] = {}
+        if resume and self.repository is not None:
+            for listing_type in listing_types:
+                skip_ids_by_type[listing_type] = self.repository.existing_ids(
+                    listing_type
+                )
+                logger.info(
+                    f"Resume: {len(skip_ids_by_type[listing_type])} "
+                    f"already-scraped ids for {listing_type.name}"
+                )
 
         async with AsyncHttpClient() as http:
             for district in districts:
@@ -111,6 +126,7 @@ class BatchScraper:
                         listing_type=listing_type,
                         limit=limit,
                         max_properties=max_properties,
+                        skip_ids=skip_ids_by_type.get(listing_type),
                     )
                     total_scraped += count
 

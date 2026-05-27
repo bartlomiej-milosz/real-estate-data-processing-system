@@ -71,6 +71,11 @@ def scrape(
         "--delay",
         help="Seconds to wait between district/type combinations.",
     ),
+    resume: bool = typer.Option(
+        False,
+        "--resume",
+        help="Skip listings whose ids already exist in the repository.",
+    ),
 ) -> None:
     """Scrape otodom and persist raw rows to the SQLite repository."""
     districts = _parse_districts(district) or list(District)
@@ -88,6 +93,7 @@ def scrape(
             limit=limit,
             max_properties=max_properties,
             delay_seconds=delay,
+            resume=resume,
         )
     )
     logger.info(f"Scraping completed. Total properties: {total}")

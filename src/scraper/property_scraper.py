@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import List, Optional
 
-from ..models.property import ScrapedListing
+from ..models.property import ScrapedListing, extract_listing_id
 from .http_client import AsyncHttpClient
 from .parser import parse_listing_links, parse_property_detail
 from .search_params import PropertySearchQuery
@@ -17,10 +17,12 @@ class PropertyScraper:
         self,
         config: PropertySearchQuery,
         http_client: Optional[AsyncHttpClient] = None,
+        skip_ids: Optional[set[str]] = None,
     ):
         self.config = config
         self.http = http_client or AsyncHttpClient()
         self._owns_client = http_client is None
+        self.skip_ids: set[str] = skip_ids or set()
         self.properties: List[ScrapedListing] = []
 
     def get_properties(self) -> List[ScrapedListing]:
@@ -53,6 +55,15 @@ class PropertyScraper:
 
         links = parse_listing_links(html)
         logger.info(f"Found {len(links)} listings")
+
+        if self.skip_ids:
+            before = len(links)
+            links = [
+                url for url in links if extract_listing_id(url) not in self.skip_ids
+            ]
+            skipped = before - len(links)
+            if skipped:
+                logger.info(f"Skipping {skipped} listings already in repository")
 
         results = await asyncio.gather(*(self._scrape_detail(url) for url in links))
         return [p for p in results if p is not None]
