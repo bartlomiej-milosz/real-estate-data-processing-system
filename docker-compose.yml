@@ -1,0 +1,14 @@
+services:
+  scraper:
+    build: .
+    image: warsaw-properties:latest
+    container_name: warsaw-properties-scraper
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      WP_DATABASE_URL: sqlite:////data/properties.db
+      WP_DATA_DIR: /data
+    volumes:
+      - ./data:/data
+    command: ["scrape", "--resume"]
