@@ -31,15 +31,38 @@ _ADDITIONAL_FEATURES = {
 }
 
 _PROPERTY_COLUMNS = [
-    "id", "link",
-    "price", "area", "rooms", "maintenance_fee", "year_built",
-    "heating", "condition", "market", "ownership", "advertiser_type",
-    "building_type", "windows", "elevator",
-    "district", "neighborhood", "street",
-    "current_floor", "total_floors",
-    "gated_area", "monitoring", "security_guard",
-    "balcony", "parking", "terrace", "garden", "basement",
-    "utility_rooms", "non_smokers_only", "students_allowed", "separate_kitchen",
+    "id",
+    "link",
+    "price",
+    "area",
+    "rooms",
+    "maintenance_fee",
+    "year_built",
+    "heating",
+    "condition",
+    "market",
+    "ownership",
+    "advertiser_type",
+    "building_type",
+    "windows",
+    "elevator",
+    "district",
+    "neighborhood",
+    "street",
+    "current_floor",
+    "total_floors",
+    "gated_area",
+    "monitoring",
+    "security_guard",
+    "balcony",
+    "parking",
+    "terrace",
+    "garden",
+    "basement",
+    "utility_rooms",
+    "non_smokers_only",
+    "students_allowed",
+    "separate_kitchen",
 ]
 
 
@@ -65,9 +88,7 @@ class PropertyDataCleaner:
         df = pd.concat(
             [
                 df,
-                self._flags_from_text(
-                    df["additional_features"], _ADDITIONAL_FEATURES
-                ),
+                self._flags_from_text(df["additional_features"], _ADDITIONAL_FEATURES),
             ],
             axis=1,
         )
@@ -91,9 +112,7 @@ class PropertyDataCleaner:
 
     def _first_int(self, series: pd.Series) -> pd.Series:
         return (
-            series.astype("string")
-            .str.extract(r"(\d+)", expand=False)
-            .astype("Int64")
+            series.astype("string").str.extract(r"(\d+)", expand=False).astype("Int64")
         )
 
     def _first_float(self, series: pd.Series) -> pd.Series:

@@ -131,13 +131,10 @@ class BatchScraper:
                     total_scraped += count
 
                     is_last = (
-                        district == last_district
-                        and listing_type == last_listing_type
+                        district == last_district and listing_type == last_listing_type
                     )
                     if not is_last:
-                        logger.info(
-                            f"Waiting {delay_seconds}s before next scrape..."
-                        )
+                        logger.info(f"Waiting {delay_seconds}s before next scrape...")
                         await asyncio.sleep(delay_seconds)
 
         return total_scraped

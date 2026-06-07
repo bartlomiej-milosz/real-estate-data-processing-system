@@ -40,9 +40,7 @@ class BatchCleaner:
             logger.info(f"Saved {written} cleaned rows for {listing_type.name}")
         return results
 
-    def export_combined_csv(
-        self, listing_type: ListingType, output_path: Path
-    ) -> int:
+    def export_combined_csv(self, listing_type: ListingType, output_path: Path) -> int:
         df = self.repository.load_cleaned(listing_type)
         if df.empty:
             logger.warning(f"No cleaned rows for {listing_type.name}")

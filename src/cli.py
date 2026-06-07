@@ -120,9 +120,7 @@ def clean(
 
 @app.command()
 def export(
-    listing_type: str = typer.Argument(
-        ..., help="SALE or RENT."
-    ),
+    listing_type: str = typer.Argument(..., help="SALE or RENT."),
     output: Path = typer.Option(
         ...,
         "--output",

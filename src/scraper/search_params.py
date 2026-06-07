@@ -46,11 +46,10 @@ class PropertySearchQuery:
 
     def _build_base_url(self) -> str:
         """Build the base URL based on number of locations"""
+        prefix = f"{BASE_URL}/{self.listing_type.value}/{self.property_type.value}"
         if len(self.locations) == 1:
-            district = self.locations[0].value
-            return f"{BASE_URL}/{self.listing_type.value}/{self.property_type.value}/{district}"
-        else:
-            return f"{BASE_URL}/{self.listing_type.value}/{self.property_type.value}/wiele-lokalizacji"
+            return f"{prefix}/{self.locations[0].value}"
+        return f"{prefix}/wiele-lokalizacji"
 
     def _build_location_params(self) -> Dict[str, str]:
         """Build location-specific parameters"""
