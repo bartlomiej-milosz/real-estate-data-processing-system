@@ -25,10 +25,10 @@ jobs:
         run: uv sync --frozen
 
       - name: Ruff lint
-        run: uv run ruff check src/
+        run: uv run ruff check src/ tests/
 
       - name: Ruff format check
-        run: uv run ruff format --check src/
+        run: uv run ruff format --check src/ tests/
 
-      - name: Import smoke
-        run: uv run python -c "import src.cli"
+      - name: Pytest
+        run: uv run pytest --cov=src --cov-report=term-missing

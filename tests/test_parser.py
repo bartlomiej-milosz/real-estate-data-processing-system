@@ -44,18 +44,19 @@ def test_parse_listing_links_empty():
 
 
 def test_parse_property_detail_price_and_location():
-    html = """
+    location_text = "ul. Grzybowska, Śródmieście, Warszawa"
+    html = f"""
         <html><body>
           <strong data-cy="adPageHeaderPrice"
                   data-sentry-element="Price"
                   data-sentry-source-file="AdPrice.tsx">9 600 000 zł</strong>
           <a data-sentry-element="StyledLink"
-             data-sentry-source-file="MapLink.tsx">ul. Grzybowska, Śródmieście, Warszawa</a>
+             data-sentry-source-file="MapLink.tsx">{location_text}</a>
         </body></html>
     """
     data = parse_property_detail(html)
     assert data["price"] == 9_600_000
-    assert data["location"] == "ul. Grzybowska, Śródmieście, Warszawa"
+    assert data["location"] == location_text
 
 
 def test_parse_property_detail_missing_returns_none():
@@ -92,13 +93,15 @@ def test_parse_property_detail_fields_by_label():
 def test_parse_property_detail_additional_features_pipe_joined():
     html = f"""
         <html><body>
-          {_detail_field(
-              "Informacje dodatkowe:",
-              '<span class="css-axw7ok">balkon</span>'
-              '<span class="css-axw7ok">piwnica</span>'
-              '<span class="css-axw7ok"></span>'
-              '<span class="css-axw7ok">taras</span>',
-          )}
+          {
+        _detail_field(
+            "Informacje dodatkowe:",
+            '<span class="css-axw7ok">balkon</span>'
+            '<span class="css-axw7ok">piwnica</span>'
+            '<span class="css-axw7ok"></span>'
+            '<span class="css-axw7ok">taras</span>',
+        )
+    }
         </body></html>
     """
     data = parse_property_detail(html)

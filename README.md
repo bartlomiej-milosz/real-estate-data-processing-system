@@ -4,6 +4,8 @@ Async pipeline that scrapes real-estate listings from otodom.pl, persists them
 to SQLite, cleans the raw text into typed rows, and exports analysis-ready
 CSVs. Covers all eighteen Warsaw districts for both sales and rentals.
 
+![CI](https://github.com/bartlomiej-milosz/warsaw-property-analysis/actions/workflows/ci.yml/badge.svg)
+
 ## Architecture
 
 ```mermaid
@@ -77,6 +79,28 @@ All settings are environment variables prefixed with `WP_`. See
 | `WP_MAX_PROPERTIES_PER_COMBINATION` | `500` | Hard cap per district x type |
 | `WP_DELAY_SECONDS_BETWEEN_COMBINATIONS` | `10` | Politeness delay |
 
+## Testing
+
+```bash
+uv run pytest                          # full suite
+uv run pytest --cov=src                # with coverage report
+uv run pytest tests/test_parser.py -v  # one file
+```
+
+44 tests cover the parts that benefit most from regression coverage:
+
+| Module | Coverage |
+| --- | --- |
+| `scraper/parser.py` | HTML → dict, synthetic fixtures, missing-tag behaviour |
+| `cleaner/property_cleaner.py` | each vectorised transform + end-to-end `clean_to_models` |
+| `scraper/search_params.py` | single/multi-district URLs, price filters, pagination, validation |
+| `models/property.py` | listing-id extraction, model freezing, numeric coercion |
+| `storage/repository.py` | SQLite upserts, `existing_ids` for resume, round-trip dtypes |
+
+Async HTTP and CLI orchestration are intentionally not unit-tested — they
+are thin wiring over the tested components, and mocking httpx adds noise
+without buying confidence.
+
 ## Docker
 
 ```bash
@@ -121,4 +145,4 @@ przeglądającego serwis. Dane są pobierane do nauki, nie do redystrybucji.
 ## Stack
 
 Python 3.13 · httpx · asyncio · BeautifulSoup4 · pandas · pydantic v2 ·
-pydantic-settings · SQLAlchemy 2 · tenacity · typer · uv · ruff.
+pydantic-settings · SQLAlchemy 2 · tenacity · typer · pytest · uv · ruff.

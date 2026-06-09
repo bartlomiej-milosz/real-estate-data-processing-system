@@ -20,7 +20,8 @@ def test_single_district_uses_path_form():
         limit=ResultLimit.LARGE,
     )
     url = q.get_url()
-    assert "/sprzedaz/mieszkanie/mazowieckie/warszawa/warszawa/warszawa/srodmiescie" in url
+    expected = "/sprzedaz/mieszkanie/mazowieckie/warszawa/warszawa/warszawa/srodmiescie"
+    assert expected in url
     assert "locations" not in _query(url)
 
 
@@ -71,9 +72,7 @@ def test_empty_locations_raises():
 
 def test_invalid_price_range_raises():
     with pytest.raises(ValueError, match="greater than maximum"):
-        PropertySearchQuery(
-            locations=[District.WOLA], price_min=5000, price_max=1000
-        )
+        PropertySearchQuery(locations=[District.WOLA], price_min=5000, price_max=1000)
 
 
 def test_negative_price_raises():
