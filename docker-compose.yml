@@ -1,4 +1,11 @@
 services:
+  # Run subcommands explicitly:
+  #   docker compose run --rm scraper scrape --resume
+  #   docker compose run --rm scraper clean
+  #   docker compose run --rm scraper export SALE -o /data/warsaw_all_sales.csv
+  #
+  # `docker compose up` falls back to `--help` from the Dockerfile CMD so it
+  # never starts a real scrape unintentionally.
   scraper:
     build: .
     image: warsaw-properties:latest
@@ -11,4 +18,3 @@ services:
       WP_DATA_DIR: /data
     volumes:
       - ./data:/data
-    command: ["scrape", "--resume"]
