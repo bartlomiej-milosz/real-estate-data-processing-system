@@ -1,6 +1,6 @@
 """SQLAlchemy ORM tables for raw scraped listings and cleaned properties."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, Float, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -19,7 +19,7 @@ class RawListingRow(Base):
     link: Mapped[str] = mapped_column(String, nullable=False)
     listing_type: Mapped[str] = mapped_column(String, nullable=False, index=True)
     scraped_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
     )
 
     price: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -50,7 +50,7 @@ class PropertyRow(Base):
     link: Mapped[str] = mapped_column(String, nullable=False)
     listing_type: Mapped[str] = mapped_column(String, nullable=False, index=True)
     cleaned_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
     )
 
     price: Mapped[int | None] = mapped_column(Integer, nullable=True)
