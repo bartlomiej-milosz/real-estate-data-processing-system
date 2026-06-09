@@ -66,6 +66,14 @@ uv run python -m src export SALE -o warsaw_all_sales.csv
 uv run python -m src export RENT -o warsaw_all_rents.csv
 ```
 
+## Sample output
+
+A 30-row snapshot of the cleaned schema lives at
+[`data/sample/sample_sales.csv`](data/sample/sample_sales.csv) and
+[`data/sample/sample_rents.csv`](data/sample/sample_rents.csv) so the column
+layout can be inspected without running the pipeline. The full `data/`
+directory is git-ignored — outputs are reproducible from the SQLite store.
+
 ## Configuration
 
 All settings are environment variables prefixed with `WP_`. See

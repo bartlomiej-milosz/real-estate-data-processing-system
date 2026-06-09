@@ -48,3 +48,7 @@ build/
 *.db
 *.sqlite
 *.sqlite3
+
+# Pipeline outputs — keep sample/ checked in, ignore everything else under data/
+/data/*
+!/data/sample/
