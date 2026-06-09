@@ -4,7 +4,7 @@ Async pipeline that scrapes real-estate listings from otodom.pl, persists them
 to SQLite, cleans the raw text into typed rows, and exports analysis-ready
 CSVs. Covers all eighteen Warsaw districts for both sales and rentals.
 
-![CI](https://github.com/bartlomiej-milosz/warsaw-property-analysis/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/bartlomiej-milosz/real-estate-data-processing-system/actions/workflows/ci.yml/badge.svg)
 
 ## Architecture
 
