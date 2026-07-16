@@ -143,12 +143,9 @@ src/
     └── repository.py     PropertyRepository
 ```
 
-## Etyka
+## Ethics
 
-Respektuje `robots.txt` i Terms of Service otodom.pl. Domyślny limit
-współbieżności (5) i 10-sekundowa pauza między dzielnicami są dobrane tak,
-żeby ruch z tego skrypta wyglądał jak ruch jednego użytkownika
-przeglądającego serwis. Dane są pobierane do nauki, nie do redystrybucji.
+Complies with `robots.txt` and the otodom.pl Terms of Service. The default concurrency limit (5) and the 10-second pause between districts are set so that traffic from this script appears to come from a single user browsing the site. Data is collected for learning purposes, not for redistribution.
 
 ## Stack
 
